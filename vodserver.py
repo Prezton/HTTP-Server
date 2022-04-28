@@ -199,7 +199,7 @@ class HTTPServer:
         else:
             conn_header = "Connection: keep-alive\r\n"
         payload = "<html>\n<head>\n<style type=text/css>\n\n</style>\n</head>\n\n<body><p>The URI you are requesting does not exist\n<br><br> \nTry checking the URL in your web browser.</p>\n\n</body>\n</html>\n"
-        content_length_header = "Content-Length: " + str(len(page)) + "\r\n"
+        content_length_header = "Content-Length: " + str(len(payload)) + "\r\n"
         header = "HTTP/1.1 404 Not Found\r\n" + time_header + content_type_header + content_length_header + conn_header + "\r\n"
         response = header + payload
         return response
@@ -208,6 +208,7 @@ class HTTPServer:
         self.s.listen()
         # ACCEPT is a blocking call
         t = threading.Thread
+
         while True:
             conn, addr = self.s.accept()
             req = conn.recv(BUFSIZE)
