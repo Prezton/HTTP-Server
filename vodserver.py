@@ -37,13 +37,14 @@ class HTTPServer:
 
         if uri.startswith("confidential"):
             self.handle_forbidden(uri, connection)
+            return
         # Terminate flag set by client
 
         fileName = os.path.join("content", uri)
         print(fileName)
 
-        if not connFlag:
-            self.terminate(uri, fileName)
+        # if not connFlag:
+        #     self.terminate(uri, fileName)
 
         if not os.path.exists(fileName):
             self.handle_not_found(uri, connection)
@@ -57,16 +58,16 @@ class HTTPServer:
         pass
 
     def handle_not_found(self, uri, connection):
-        response = self.get_404(uri)
+        response = self.get_404_response(uri)
         connection.send(response.encode())
         print("404 Not Found sent")
 
     def handle_forbidden(self, uri, connection):
-        response = self.get_403(uri)
+        response = self.get_403_response(uri)
         connection.send(response.encode())
         print("403 Forbidden Sent")
 
-    def get_403(self, uri):
+    def get_403_response(self, uri):
         time_struct = time.localtime()
         current_time = time.strftime('%a, %d %b %Y %H:%M:%S GMT', time_struct)
         time_header = "Date: " + str(current_time) + "\r\n"
@@ -76,10 +77,10 @@ class HTTPServer:
             conn_header = "Connection: close\r\n"
         else:
             conn_header = "Connection: keep-alive\r\n"
-        page = "<html>\n<head>\n<style type=text/css>\n\n</style>\n</head>\n\n<body><p>The URI you are requesting is forbidden\n<br><br> \nPermission Denied.</p>\n\n</body>\n</html>\n"
+        payload = "<html>\n<head>\n<style type=text/css>\n\n</style>\n</head>\n\n<body><p>The URI you are requesting is forbidden\n<br><br> \nPermission Denied.</p>\n\n</body>\n</html>\n"
         content_length_header = "Content-Length: " + str(len(page)) + "\r\n"
         header = "HTTP/1.1 403 Forbidden\r\n" + time_header + content_type_header + content_length_header + conn_header + "\r\n"
-        response = header + page
+        response = header + payload
         return response
 
 
@@ -92,6 +93,8 @@ class HTTPServer:
         print("response sent")
 
     def get_header(self, fileName, uri):
+        type = self.conn[uri][1]
+
         # Get Date
         time_struct = time.localtime()
         current_time = time.strftime('%a, %d %b %Y %H:%M:%S GMT', time_struct)
@@ -110,7 +113,8 @@ class HTTPServer:
 
         # Get Content-Length
         fileLength = os.path.getsize(fileName)
-        content_length_header = "Content-Length: " + str(fileLength) + "\r\n"
+        if type == 200:
+            content_length_header = "Content-Length: " + str(fileLength) + "\r\n"
 
         # Get Connection
         flag = "keep-alive"
@@ -121,19 +125,23 @@ class HTTPServer:
         # Get content type
         content_type_header = "Content-Type: " + self.get_content_type(fileName)
 
-        content_range_header = "Content-Range: "
+        if type == 206:
+            content_range_header = "Content-Range: " + self.get_range(fileName)
 
-        type = self.conn[uri][1]
         if type == 200:
             header = "HTTP/1.1 200 OK\r\n"
         elif type == 206:
             header = "HTTP/1.1 206 Partial Content\r\n"
             # Get Content-Ranges
-
-        header += time_header + last_modified_header + accept_range_header + content_length_header + conn_header + content_type_header + "\r\n"
+        etag_header = "ETag: " + "None\r\n"
+        server_header = "Server: local host \r\n"
+        header += time_header + last_modified_header + accept_range_header + content_length_header + conn_header + content_type_header + etag_header + server_header + "\r\n"
 
             # get range
         return header
+
+    def get_range(self, fileName):
+        pass
 
     def get_content_type(self, fileName):
         if fileName.endswith(".txt"):
@@ -166,7 +174,7 @@ class HTTPServer:
         data = file.read(CHUNKSIZE)
         return data
 
-    def get_404(self, uri):
+    def get_404_response(self, uri):
         time_struct = time.localtime()
         current_time = time.strftime('%a, %d %b %Y %H:%M:%S GMT', time_struct)
         time_header = "Date: " + str(current_time) + "\r\n"
@@ -177,10 +185,10 @@ class HTTPServer:
         else:
             conn_header = "Connection: keep-alive\r\n"
         # page = "<html>\n" + "<head>\n" + "<style type=text/css>\n" + "</style>\n" + "</head>\n" + "<body>\n" + "<p>This was a web page for an organization that used to exist. This organization no longer exists as it has been replaced with a new organization to teach surf kids the values and love of the ocean. The new site is: https://www.pleasurepointsurfclub.com/\n" +"<br><br>\n" + "If you came upon this page by mistake, try checking the URL in your web browser.</p>\n" +"</body>\n" +"</html>"
-        page = "<html>\n<head>\n<style type=text/css>\n\n</style>\n</head>\n\n<body><p>The URI you are requesting does not exist\n<br><br> \nTry checking the URL in your web browser.</p>\n\n</body>\n</html>\n"
+        payload = "<html>\n<head>\n<style type=text/css>\n\n</style>\n</head>\n\n<body><p>The URI you are requesting does not exist\n<br><br> \nTry checking the URL in your web browser.</p>\n\n</body>\n</html>\n"
         content_length_header = "Content-Length: " + str(len(page)) + "\r\n"
         header = "HTTP/1.1 404 Not Found\r\n" + time_header + content_type_header + content_length_header + conn_header + "\r\n"
-        response = header + page
+        response = header + payload
         return response
 
     def start(self):
