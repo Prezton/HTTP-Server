@@ -23,6 +23,7 @@ class HTTPServer:
         tmp = req.split("\n")
         connFlag = True
         type = 200
+        range = (-1, -1)
         for line in tmp:
             tmpLine = line.split(":")
             if tmpLine[0] == "Connection":
@@ -31,9 +32,11 @@ class HTTPServer:
                     connFlag = False
             if tmpLine[0].strip() == "range" or tmpLine[0].strip() == "Range":
                 type = 206
+                range = (tmpLine[1].split("="))[1].split("-")
+                range = (int(range[0]), int(range(1)))
 
         uri = (tmp[0].split("HTTP")[0])[5:].strip()
-        self.conn[uri] = [connFlag, type]
+        self.conn[uri] = [connFlag, type, range]
 
         if uri.startswith("confidential"):
             self.handle_forbidden(uri, connection)
@@ -88,12 +91,18 @@ class HTTPServer:
     def serve_request(self, fileName, uri, connection):
 
         header = self.get_header(fileName, uri)
-        response = header.encode() + self.get_payload(fileName)
+        response = header.encode() + self.get_payload(uri, fileName)
         connection.send(response)
         print("response sent")
 
     def get_header(self, fileName, uri):
         type = self.conn[uri][1]
+
+        if type == 200:
+            header = "HTTP/1.1 200 OK\r\n"
+        elif type == 206:
+            header = "HTTP/1.1 206 Partial Content\r\n"
+            # Get Content-Ranges
 
         # Get Date
         time_struct = time.localtime()
@@ -115,6 +124,8 @@ class HTTPServer:
         fileLength = os.path.getsize(fileName)
         if type == 200:
             content_length_header = "Content-Length: " + str(fileLength) + "\r\n"
+        elif type == 206:
+            content_length_header = "Content-Length: " + str(CHUNKSIZE) + "\r\n"
 
         # Get Connection
         flag = "keep-alive"
@@ -126,13 +137,14 @@ class HTTPServer:
         content_type_header = "Content-Type: " + self.get_content_type(fileName)
 
         if type == 206:
+            range = self.conn[uri][2]
+            if range[0] == -1:
+                print("WRONG RANGE FROM REQUEST!!!")
+                pass
             content_range_header = "Content-Range: " + self.get_range(fileName)
+            header += content_range_header
 
-        if type == 200:
-            header = "HTTP/1.1 200 OK\r\n"
-        elif type == 206:
-            header = "HTTP/1.1 206 Partial Content\r\n"
-            # Get Content-Ranges
+
         etag_header = "ETag: " + "None\r\n"
         server_header = "Server: local host \r\n"
         header += time_header + last_modified_header + accept_range_header + content_length_header + conn_header + content_type_header + etag_header + server_header + "\r\n"
@@ -165,9 +177,11 @@ class HTTPServer:
         else:
             return "application/octet-stream\r\n"
 
-    def get_payload(self, fileName, offset = 0, type = 200):
+    def get_payload(self, uri, fileName, offset = 0):
         file = open(fileName, "rb")
+        type = self.conn[uri][1]
         if type == 206:
+            print("get 206 payload!!!")
             file.seek(offset)
             chunk = file.read(CHUNKSIZE)
             return chunk
@@ -184,7 +198,6 @@ class HTTPServer:
             conn_header = "Connection: close\r\n"
         else:
             conn_header = "Connection: keep-alive\r\n"
-        # page = "<html>\n" + "<head>\n" + "<style type=text/css>\n" + "</style>\n" + "</head>\n" + "<body>\n" + "<p>This was a web page for an organization that used to exist. This organization no longer exists as it has been replaced with a new organization to teach surf kids the values and love of the ocean. The new site is: https://www.pleasurepointsurfclub.com/\n" +"<br><br>\n" + "If you came upon this page by mistake, try checking the URL in your web browser.</p>\n" +"</body>\n" +"</html>"
         payload = "<html>\n<head>\n<style type=text/css>\n\n</style>\n</head>\n\n<body><p>The URI you are requesting does not exist\n<br><br> \nTry checking the URL in your web browser.</p>\n\n</body>\n</html>\n"
         content_length_header = "Content-Length: " + str(len(page)) + "\r\n"
         header = "HTTP/1.1 404 Not Found\r\n" + time_header + content_type_header + content_length_header + conn_header + "\r\n"
