@@ -55,9 +55,6 @@ class HTTPServer:
         fileName = os.path.join("content", uri)
         # print(fileName)
 
-        # if not connFlag:
-        #     self.terminate(uri, fileName)
-
         if not os.path.exists(fileName):
             self.handle_not_found(uri, connection)
             return
@@ -85,10 +82,8 @@ class HTTPServer:
 
         if not self.conn[uri][0]:
             conn_header = "Connection: close\r\n"
-            # print("close connection1")
         else:
             conn_header = "Connection: close\r\n"
-            # print("close connection2")
 
         # Reference: Udacity
         payload = "<html>\n<head>\n<style type=text/css>\n\n</style>\n</head>\n\n<body><p>The URI you are requesting is forbidden\n<br><br> \nPermission Denied.</p>\n\n</body>\n</html>\n"
@@ -129,10 +124,10 @@ class HTTPServer:
         # print(time_header)
 
         # Get Last-Modified
-        modTimesinceEpoc = os.path.getmtime(fileName)
-        modificationTime = datetime.fromtimestamp(modTimesinceEpoc).strftime('%c')
-        modificationTime = modificationTime[:3] + "," + modificationTime[3:11] + modificationTime[20:24]
-        last_modified_header = "Last-Modified: " + modificationTime + "\r\n"
+        modtime_epoc = os.path.getmtime(fileName)
+        modified_time = datetime.fromtimestamp(modtime_epoc).strftime('%c')
+        modified_time = modified_time[:3] + "," + modified_time[3:11] + modified_time[20:24]
+        last_modified_header = "Last-Modified: " + modified_time + "\r\n"
         # print(last_modified_header)
 
         # Get Accept-Ranges
