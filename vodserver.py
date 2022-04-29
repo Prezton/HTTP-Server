@@ -30,15 +30,17 @@ class HTTPServer:
             tmpLine = line.split(":")
             if tmpLine[0] == "Connection":
                 connStatus = tmpLine[1].strip()
+                print("received Connection: ", connStatus)
                 if connStatus == "close" or connStatus == "Close":
                     connFlag = False
             if tmpLine[0].strip() == "range" or tmpLine[0].strip() == "Range":
                 type = 206
                 range = (tmpLine[1].split("="))[1].split("-")
                 range = (int(range[0]), int(range(1)))
+                print("received range is: ", range)
 
         uri = (tmp[0].split("HTTP")[0])[5:].strip()
-        print("req is: ", req)
+        # print("req is: ", req)
         self.conn[uri] = [connFlag, type, range]
 
         if uri.startswith("confidential"):
@@ -131,10 +133,12 @@ class HTTPServer:
             content_length_header = "Content-Length: " + str(fileLength) + "\r\n"
         elif type == 206:
             content_length_header = "Content-Length: " + str(CHUNKSIZE) + "\r\n"
+            print("206 response! different length header")
 
         # Get Connection
         if not self.conn[uri][0]:
             flag = "close"
+            print("close!!!")
         else:
             flag = "keep-alive"
 
@@ -150,6 +154,9 @@ class HTTPServer:
                 pass
             content_range_header = "Content-Range: " + self.get_range(fileName)
             header += content_range_header
+            print("206")
+        # elif type == 200:
+            # content_range_header = "Content-Range: bytes " + str(0) + "/" + str(fileLength - 1) + "\r\n"
 
 
         etag_header = "ETag: " + "None\r\n"
