@@ -60,6 +60,7 @@ class HTTPServer:
         #     self.terminate(uri, fileName)
 
         if not os.path.exists(fileName):
+            print("404 Not Found sent, uri is ", fileName)
             self.handle_not_found(uri, connection)
             return
 
@@ -72,8 +73,7 @@ class HTTPServer:
 
     def handle_not_found(self, uri, connection):
         response = self.get_404_response(uri)
-        connection.send(response.encode())
-        print("404 Not Found sent, uri is ", uri)
+        connection.send(response)
 
     def handle_forbidden(self, uri, connection):
         response = self.get_403_response(uri)
@@ -109,6 +109,9 @@ class HTTPServer:
 
     def get_header(self, fileName, uri):
         type = self.conn[uri][1]
+        fileLength = os.path.getsize(fileName)
+        if fileLength > CHUNKSIZE:
+            type = 206
 
         if type == 200:
             header = "HTTP/1.1 200 OK\r\n"
@@ -133,7 +136,6 @@ class HTTPServer:
         accept_range_header = "Accept-Ranges: bytes" + "\r\n"
 
         # Get Content-Length
-        fileLength = os.path.getsize(fileName)
         if type == 200:
             content_length_header = "Content-Length: " + str(fileLength) + "\r\n"
         elif type == 206:
@@ -164,9 +166,7 @@ class HTTPServer:
             # content_range_header = "Content-Range: bytes " + str(0) + "/" + str(fileLength - 1) + "\r\n"
 
 
-        etag_header = "ETag: " + "None\r\n"
-        server_header = "Server: local host \r\n"
-        header += time_header + last_modified_header + accept_range_header + content_length_header + conn_header + content_type_header + etag_header + server_header + "\r\n"
+        header += time_header + last_modified_header + accept_range_header + content_length_header + conn_header + content_type_header + "\r\n"
 
             # get range
         print("header: ", header)
@@ -213,7 +213,7 @@ class HTTPServer:
             chunk = file.read(CHUNKSIZE)
             return chunk
         data = file.read(CHUNKSIZE)
-        print("data length: ", len(data))
+        # print("data length: ", len(data))
         return data
 
     def get_404_response(self, uri):
@@ -230,7 +230,7 @@ class HTTPServer:
         content_length_header = "Content-Length: " + str(len(payload)) + "\r\n"
         header = "HTTP/1.1 404 Not Found\r\n" + time_header + content_type_header + content_length_header + conn_header + "\r\n"
         response = header + payload
-        return response
+        return response.encode()
 
     def run(self):
         self.s.listen(1000)
