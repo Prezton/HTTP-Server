@@ -68,12 +68,12 @@ class HTTPServer:
     def handle_not_found(self, uri, connection):
         response = self.get_404_response(uri)
         connection.send(response.encode())
-        print("404 Not Found sent")
+        print("404 Not Found sent, uri is ", uri)
 
     def handle_forbidden(self, uri, connection):
         response = self.get_403_response(uri)
         connection.send(response.encode())
-        print("403 Forbidden Sent")
+        print("403 Forbidden Sent, uri is ", uri)
 
     def get_403_response(self, uri):
         time_struct = time.localtime()
@@ -164,6 +164,7 @@ class HTTPServer:
         header += time_header + last_modified_header + accept_range_header + content_length_header + conn_header + content_type_header + etag_header + server_header + "\r\n"
 
             # get range
+        print("header: ", header)
         return header
 
     def get_range(self, fileName):
@@ -200,7 +201,7 @@ class HTTPServer:
             chunk = file.read(CHUNKSIZE)
             return chunk
         data = file.read(CHUNKSIZE)
-        # print("data length: ", len(data))
+        print("data length: ", len(data))
         return data
 
     def get_404_response(self, uri):
