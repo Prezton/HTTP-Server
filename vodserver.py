@@ -25,8 +25,9 @@ class HTTPServer:
         tmp = req.split("\n")
         connFlag = True
         type = 200
-        range = (-1, -1)
+        range = [-1, -1]
         for line in tmp:
+            line = line.strip()
             tmpLine = line.split(":")
             if tmpLine[0] == "Connection":
                 connStatus = tmpLine[1].strip()
@@ -36,7 +37,11 @@ class HTTPServer:
             if tmpLine[0].strip() == "range" or tmpLine[0].strip() == "Range":
                 type = 206
                 range = (tmpLine[1].split("="))[1].split("-")
-                range = (int(range[0]), int(range(1)))
+                print("range is: ", range)
+                if not range[1]:
+                    range = [int(range[0]), -1]
+                else:
+                    range = [int(range[0]), int(range[1])]
                 print("received range is: ", range)
 
         uri = (tmp[0].split("HTTP")[0])[5:].strip()
@@ -133,7 +138,6 @@ class HTTPServer:
             content_length_header = "Content-Length: " + str(fileLength) + "\r\n"
         elif type == 206:
             content_length_header = "Content-Length: " + str(CHUNKSIZE) + "\r\n"
-            print("206 response! different length header")
 
         # Get Connection
         if not self.conn[uri][0]:
@@ -152,9 +156,10 @@ class HTTPServer:
             if range[0] == -1:
                 print("WRONG RANGE FROM REQUEST!!!")
                 pass
-            content_range_header = "Content-Range: " + self.get_range(fileName)
+            content_range_header = "Content-Range: bytes " + self.get_range(uri, fileName, fileLength) + "\r\n"
             header += content_range_header
-            print("206")
+            content_length_header = "Content-Length: " + str(self.conn[uri][2][1] - self.conn[uri][2][0]) + "\r\n"
+            print("206!!!!!!!!!!!!!!!!!!!!!!!")
         # elif type == 200:
             # content_range_header = "Content-Range: bytes " + str(0) + "/" + str(fileLength - 1) + "\r\n"
 
@@ -167,8 +172,15 @@ class HTTPServer:
         print("header: ", header)
         return header
 
-    def get_range(self, fileName):
-        pass
+    def get_range(self, uri, fileName, fileLength):
+        range = self.conn[uri][2]
+        if range[1] == -1:
+            range[1] = min(fileLength - 1, range[0] + CHUNKSIZE - 1)
+        if range[0] == -1:
+            print("206 STH WRONG!!!")
+
+        partb = str(range[0]) + "-" + str(range[1]) + "/" + str(fileLength)
+        return partb
 
     def get_content_type(self, fileName):
         if fileName.endswith(".txt"):
@@ -197,7 +209,7 @@ class HTTPServer:
         type = self.conn[uri][1]
         if type == 206:
             print("get 206 payload!!!")
-            file.seek(offset)
+            # file.seek(offset)
             chunk = file.read(CHUNKSIZE)
             return chunk
         data = file.read(CHUNKSIZE)
@@ -233,7 +245,7 @@ class HTTPServer:
             req_handle_thread = threading.Thread(target=self.parse_request, args=(req, conn, ))
             req_handle_thread.start()
             # print("REQ is: \n", req.decode())
-            print(count)
+            # print(count)
 
 
 
