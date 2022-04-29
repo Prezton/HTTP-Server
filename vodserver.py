@@ -200,6 +200,7 @@ class HTTPServer:
             chunk = file.read(CHUNKSIZE)
             return chunk
         data = file.read(CHUNKSIZE)
+        # print("data length: ", len(data))
         return data
 
     def get_404_response(self, uri):
