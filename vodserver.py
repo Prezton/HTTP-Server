@@ -33,18 +33,15 @@ class HTTPServer:
             tmpLine = line.split(":")
             if tmpLine[0] == "Connection":
                 connStatus = tmpLine[1].strip()
-                print("received Connection: ", connStatus)
                 if connStatus == "close" or connStatus == "Close":
                     connFlag = False
             if tmpLine[0].strip() == "range" or tmpLine[0].strip() == "Range":
                 type = 206
                 range = (tmpLine[1].split("="))[1].split("-")
-                print("range is: ", range)
                 if not range[1]:
                     range = [int(range[0]), -1]
                 else:
                     range = [int(range[0]), int(range[1])]
-                print("received range is: ", range)
 
         uri = (tmp[0].split("HTTP")[0])[5:].strip()
         # print("req is: ", req)
@@ -62,7 +59,6 @@ class HTTPServer:
         #     self.terminate(uri, fileName)
 
         if not os.path.exists(fileName):
-            print("404 Not Found sent, uri is ", fileName)
             self.handle_not_found(uri, connection)
             return
 
@@ -80,7 +76,6 @@ class HTTPServer:
     def handle_forbidden(self, uri, connection):
         response = self.get_403_response(uri)
         connection.send(response.encode())
-        print("403 Forbidden Sent, uri is ", uri)
 
     def get_403_response(self, uri):
         time_struct = time.localtime()
@@ -92,8 +87,10 @@ class HTTPServer:
             conn_header = "Connection: close\r\n"
             # print("close connection1")
         else:
-            conn_header = "Connection: keep-alive\r\n"
+            conn_header = "Connection: close\r\n"
             # print("close connection2")
+
+        # Reference: Udacity
         payload = "<html>\n<head>\n<style type=text/css>\n\n</style>\n</head>\n\n<body><p>The URI you are requesting is forbidden\n<br><br> \nPermission Denied.</p>\n\n</body>\n</html>\n"
         content_length_header = "Content-Length: " + str(len(payload)) + "\r\n"
         header = "HTTP/1.1 403 Forbidden\r\n" + time_header + content_type_header + content_length_header + conn_header + "\r\n"
@@ -152,7 +149,7 @@ class HTTPServer:
             flag = "close"
             print("close!!!")
         else:
-            flag = "keep-alive"
+            flag = "close"
 
         conn_header = "Connection: " + flag + "\r\n"
 
@@ -245,7 +242,8 @@ class HTTPServer:
         if not self.conn[uri][0]:
             conn_header = "Connection: close\r\n"
         else:
-            conn_header = "Connection: keep-alive\r\n"
+            conn_header = "Connection: close\r\n"
+        # Reference: Udacity
         payload = "<html>\n<head>\n<style type=text/css>\n\n</style>\n</head>\n\n<body><p>The URI you are requesting does not exist\n<br><br> \nTry checking the URL in your web browser.</p>\n\n</body>\n</html>\n"
         content_length_header = "Content-Length: " + str(len(payload)) + "\r\n"
         header = "HTTP/1.1 404 Not Found\r\n" + time_header + content_type_header + content_length_header + conn_header + "\r\n"
@@ -253,18 +251,15 @@ class HTTPServer:
         return response.encode()
 
     def run(self):
-        self.s.listen(1000)
+        self.s.listen()
         # ACCEPT is a blocking call
-        global count
 
         while True:
             conn, addr = self.s.accept()
             req = conn.recv(BUFSIZE)
-            count += 1
             # print("received msg")
             req_handle_thread = threading.Thread(target=self.parse_request, args=(req, conn, ))
             req_handle_thread.start()
-            print("REQ is: \n", req.decode())
             # print(count)
 
 
