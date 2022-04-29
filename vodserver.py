@@ -15,7 +15,7 @@ class HTTPServer:
         self.port = port
         self.s = None
         self.createSocket()
-        # {uri: ["keep-alive" True /"close" False, 200/206]}
+        # {uri: ["keep-alive" True /"close" False, 200/206, [-1, -1]/range ]}
         self.conn = dict()
 
     def parse_request(self, req, connection):
@@ -104,7 +104,10 @@ class HTTPServer:
 
         header = self.get_header(fileName, uri)
         response = header.encode() + self.get_payload(uri, fileName)
-        connection.send(response)
+        try:
+            connection.send(response)
+        except:
+            print("broken pipe exception")
         # print("response sent", fileName)
 
     def get_header(self, fileName, uri):
@@ -112,6 +115,7 @@ class HTTPServer:
         fileLength = os.path.getsize(fileName)
         if fileLength > CHUNKSIZE:
             type = 206
+            self.conn[uri][1] = 206
 
         if type == 200:
             header = "HTTP/1.1 200 OK\r\n"
@@ -155,12 +159,12 @@ class HTTPServer:
 
         if type == 206:
             range = self.conn[uri][2]
-            if range[0] == -1:
-                print("WRONG RANGE FROM REQUEST!!!")
-                pass
+            # if range[0] == -1:
+                # print("WRONG RANGE FROM REQUEST!!!")
+                # pass
             content_range_header = "Content-Range: bytes " + self.get_range(uri, fileName, fileLength) + "\r\n"
             header += content_range_header
-            content_length_header = "Content-Length: " + str(self.conn[uri][2][1] - self.conn[uri][2][0]) + "\r\n"
+            content_length_header = "Content-Length: " + str(self.get_206_length(uri, fileLength)) + "\r\n"
             print("206!!!!!!!!!!!!!!!!!!!!!!!")
         # elif type == 200:
             # content_range_header = "Content-Range: bytes " + str(0) + "/" + str(fileLength - 1) + "\r\n"
@@ -172,12 +176,23 @@ class HTTPServer:
         print("header: ", header)
         return header
 
-    def get_range(self, uri, fileName, fileLength):
+    def get_206_length(self, uri, fileLength):
         range = self.conn[uri][2]
+        if range[0] == -1:
+            print("206: First request without range or sth wrong")
+            range[0] = 0
         if range[1] == -1:
             range[1] = min(fileLength - 1, range[0] + CHUNKSIZE - 1)
+
+        return range[1] - range[0]
+
+    def get_range(self, uri, fileName, fileLength):
+        range = self.conn[uri][2]
         if range[0] == -1:
-            print("206 STH WRONG!!!")
+            range[0] = 0
+            print("206 STH WRONG or first req")
+        if range[1] == -1:
+            range[1] = min(fileLength - 1, range[0] + CHUNKSIZE - 1)
 
         partb = str(range[0]) + "-" + str(range[1]) + "/" + str(fileLength)
         return partb
@@ -207,10 +222,13 @@ class HTTPServer:
     def get_payload(self, uri, fileName, offset = 0):
         file = open(fileName, "rb")
         type = self.conn[uri][1]
+        range = self.conn[uri][2]
+        offset = range[0]
         if type == 206:
-            print("get 206 payload!!!")
-            # file.seek(offset)
+            file.seek(offset)
             chunk = file.read(CHUNKSIZE)
+            print("get 206 payload, length is: ", len(chunk))
+
             return chunk
         data = file.read(CHUNKSIZE)
         # print("data length: ", len(data))
