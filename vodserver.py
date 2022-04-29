@@ -78,10 +78,12 @@ class HTTPServer:
 
         if not self.conn[uri][0]:
             conn_header = "Connection: close\r\n"
+            print("close connection1")
         else:
-            conn_header = "Connection: keep-alive\r\n"
+            conn_header = "Connection: close\r\n"
+            print("close connection2")
         payload = "<html>\n<head>\n<style type=text/css>\n\n</style>\n</head>\n\n<body><p>The URI you are requesting is forbidden\n<br><br> \nPermission Denied.</p>\n\n</body>\n</html>\n"
-        content_length_header = "Content-Length: " + str(len(page)) + "\r\n"
+        content_length_header = "Content-Length: " + str(len(payload)) + "\r\n"
         header = "HTTP/1.1 403 Forbidden\r\n" + time_header + content_type_header + content_length_header + conn_header + "\r\n"
         response = header + payload
         return response
@@ -93,7 +95,7 @@ class HTTPServer:
         header = self.get_header(fileName, uri)
         response = header.encode() + self.get_payload(uri, fileName)
         connection.send(response)
-        print("response sent")
+        print("response sent", fileName)
 
     def get_header(self, fileName, uri):
         type = self.conn[uri][1]
@@ -128,9 +130,12 @@ class HTTPServer:
             content_length_header = "Content-Length: " + str(CHUNKSIZE) + "\r\n"
 
         # Get Connection
-        flag = "keep-alive"
         if not self.conn[uri][0]:
             flag = "close"
+        else:
+            flag = "keep-alive"
+            print("close connection2")
+
         conn_header = "Connection: " + flag + "\r\n"
 
         # Get content type
@@ -197,7 +202,7 @@ class HTTPServer:
         if not self.conn[uri][0]:
             conn_header = "Connection: close\r\n"
         else:
-            conn_header = "Connection: keep-alive\r\n"
+            conn_header = "Connection: Close\r\n"
         payload = "<html>\n<head>\n<style type=text/css>\n\n</style>\n</head>\n\n<body><p>The URI you are requesting does not exist\n<br><br> \nTry checking the URL in your web browser.</p>\n\n</body>\n</html>\n"
         content_length_header = "Content-Length: " + str(len(payload)) + "\r\n"
         header = "HTTP/1.1 404 Not Found\r\n" + time_header + content_type_header + content_length_header + conn_header + "\r\n"
@@ -205,16 +210,17 @@ class HTTPServer:
         return response
 
     def start(self):
-        self.s.listen()
+        self.s.listen(1000)
         # ACCEPT is a blocking call
         t = threading.Thread
 
         while True:
             conn, addr = self.s.accept()
             req = conn.recv(BUFSIZE)
+            print("received msg")
             req_handle_thread = threading.Thread(target=self.parse_request, args=(req, conn, ))
             req_handle_thread.start()
-            print("REQ is: \n", req.decode())
+            # print("REQ is: \n", req.decode())
 
 
 
@@ -240,4 +246,3 @@ if __name__ == "__main__":
     # print(type(port))
     server = HTTPServer(port)
     server.start()
-
