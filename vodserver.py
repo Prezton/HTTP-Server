@@ -19,6 +19,8 @@ class HTTPServer:
         self.conn = dict()
 
     def parse_request(self, req, connection):
+        if not req:
+            return
         req = req.decode()
         tmp = req.split("\n")
         connFlag = True
@@ -36,7 +38,7 @@ class HTTPServer:
                 range = (int(range[0]), int(range(1)))
 
         uri = (tmp[0].split("HTTP")[0])[5:].strip()
-        print("uri is: ", uri)
+        print("req is: ", req)
         self.conn[uri] = [connFlag, type, range]
 
         if uri.startswith("confidential"):
@@ -135,7 +137,6 @@ class HTTPServer:
             flag = "close"
         else:
             flag = "keep-alive"
-            print("respond keep-alive")
 
         conn_header = "Connection: " + flag + "\r\n"
 
@@ -213,7 +214,6 @@ class HTTPServer:
     def run(self):
         self.s.listen(1000)
         # ACCEPT is a blocking call
-        t = threading.Thread
         global count
 
         while True:
