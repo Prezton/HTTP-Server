@@ -9,6 +9,8 @@ port = 0
 BUFSIZE = 1024
 content_type_dict = {}
 CHUNKSIZE = 5242880
+cache = dict()
+
 global count
 class HTTPServer:
     def __init__(self, port):
@@ -182,15 +184,15 @@ class HTTPServer:
             print("206: First request without range or sth wrong")
             range[0] = 0
         if range[1] == -1:
-            range[1] = min(fileLength - 1, range[0] + CHUNKSIZE - 1)
+            range[1] = min(fileLength, range[0] + CHUNKSIZE)
 
-        return range[1] - range[0]
+        return range[1] - range[0] + 1
 
     def get_range(self, uri, fileName, fileLength):
         range = self.conn[uri][2]
         if range[0] == -1:
             range[0] = 0
-            print("206 STH WRONG or first req")
+            print("206 sth wrong or first req")
         if range[1] == -1:
             range[1] = min(fileLength - 1, range[0] + CHUNKSIZE - 1)
 
@@ -262,7 +264,7 @@ class HTTPServer:
             # print("received msg")
             req_handle_thread = threading.Thread(target=self.parse_request, args=(req, conn, ))
             req_handle_thread.start()
-            # print("REQ is: \n", req.decode())
+            print("REQ is: \n", req.decode())
             # print(count)
 
 
