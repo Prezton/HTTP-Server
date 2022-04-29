@@ -9,7 +9,7 @@ port = 0
 BUFSIZE = 1024
 content_type_dict = {}
 CHUNKSIZE = 5242880
-
+global count
 class HTTPServer:
     def __init__(self, port):
         self.port = port
@@ -36,6 +36,7 @@ class HTTPServer:
                 range = (int(range[0]), int(range(1)))
 
         uri = (tmp[0].split("HTTP")[0])[5:].strip()
+        print("uri is: ", uri)
         self.conn[uri] = [connFlag, type, range]
 
         if uri.startswith("confidential"):
@@ -44,7 +45,7 @@ class HTTPServer:
         # Terminate flag set by client
 
         fileName = os.path.join("content", uri)
-        print(fileName)
+        # print(fileName)
 
         # if not connFlag:
         #     self.terminate(uri, fileName)
@@ -78,10 +79,10 @@ class HTTPServer:
 
         if not self.conn[uri][0]:
             conn_header = "Connection: close\r\n"
-            print("close connection1")
+            # print("close connection1")
         else:
-            conn_header = "Connection: close\r\n"
-            print("close connection2")
+            conn_header = "Connection: keep-alive\r\n"
+            # print("close connection2")
         payload = "<html>\n<head>\n<style type=text/css>\n\n</style>\n</head>\n\n<body><p>The URI you are requesting is forbidden\n<br><br> \nPermission Denied.</p>\n\n</body>\n</html>\n"
         content_length_header = "Content-Length: " + str(len(payload)) + "\r\n"
         header = "HTTP/1.1 403 Forbidden\r\n" + time_header + content_type_header + content_length_header + conn_header + "\r\n"
@@ -95,7 +96,7 @@ class HTTPServer:
         header = self.get_header(fileName, uri)
         response = header.encode() + self.get_payload(uri, fileName)
         connection.send(response)
-        print("response sent", fileName)
+        # print("response sent", fileName)
 
     def get_header(self, fileName, uri):
         type = self.conn[uri][1]
@@ -134,7 +135,7 @@ class HTTPServer:
             flag = "close"
         else:
             flag = "keep-alive"
-            print("close connection2")
+            print("respond keep-alive")
 
         conn_header = "Connection: " + flag + "\r\n"
 
@@ -202,25 +203,28 @@ class HTTPServer:
         if not self.conn[uri][0]:
             conn_header = "Connection: close\r\n"
         else:
-            conn_header = "Connection: Close\r\n"
+            conn_header = "Connection: keep-alive\r\n"
         payload = "<html>\n<head>\n<style type=text/css>\n\n</style>\n</head>\n\n<body><p>The URI you are requesting does not exist\n<br><br> \nTry checking the URL in your web browser.</p>\n\n</body>\n</html>\n"
         content_length_header = "Content-Length: " + str(len(payload)) + "\r\n"
         header = "HTTP/1.1 404 Not Found\r\n" + time_header + content_type_header + content_length_header + conn_header + "\r\n"
         response = header + payload
         return response
 
-    def start(self):
+    def run(self):
         self.s.listen(1000)
         # ACCEPT is a blocking call
         t = threading.Thread
+        global count
 
         while True:
             conn, addr = self.s.accept()
             req = conn.recv(BUFSIZE)
-            print("received msg")
+            count += 1
+            # print("received msg")
             req_handle_thread = threading.Thread(target=self.parse_request, args=(req, conn, ))
             req_handle_thread.start()
             # print("REQ is: \n", req.decode())
+            print(count)
 
 
 
@@ -242,7 +246,8 @@ class HTTPServer:
 
 
 if __name__ == "__main__":
+    count = 0
     port = int(sys.argv[1])
     # print(type(port))
     server = HTTPServer(port)
-    server.start()
+    server.run()
